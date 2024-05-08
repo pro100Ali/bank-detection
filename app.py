@@ -3,31 +3,14 @@ import os
 from ultralytics import YOLO
 import streamlit as st
 import numpy as np
-from streamlit_webrtc import VideoTransformerBase, webrtc_streamer, WebRtcMode, RTCConfiguration
 
 path = ""
 VIDEOS_DIR = os.path.join(path, 'video')
 model_name = 'yolov8-n-100'
-RTC_CONFIGURATION = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
-
-
-class BanknoteDetector(VideoTransformerBase):
-    def __init__(self):
-        super().__init__()
-        self.model = YOLO(f'models/train-{model_name}/weights/best.pt')
-
-    def transform(self, frame):
-        print('hey')
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.model.predict(frame)
-        annotated_frame = results[0].plot()
-        return cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
 
 
 def main():
     st.title("Banknote Detection")
-
-    st.write("--Use operations in the side bar")
 
     st.sidebar.write("")
     st.sidebar.write("")
@@ -71,27 +54,7 @@ def main():
                     if success:
                         results = model.predict(frame)
                         annotated_frame = results[0].plot()
-                        # Get frame dimensions (height, width)
-                        # annotated_frame = frame
-                        # height, width = frame.shape[:2]
-                        #
-                        # # Calculate center coordinates
-                        # center_x = int(width / 2)
-                        # center_y = int(height / 2)
-                        #
-                        # # Define radius (adjust as needed)
-                        # radius = 50
-
-                        # Draw the circle (BGR format for OpenCV)
-                        # cv2.circle(annotated_frame, (center_x, center_y), radius, (0, 0, 255), -1)
-                        # Convert frame to RGB format for Streamlit display
                         rgb_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
-
-                        # Display the processed frame on Streamlit
-                        # FRAME_WINDOW.image(rgb_frame, channels="RGB")  # Adjust width as needed
-
-                        # cv2.imshow("Yolov8 Tracking", annotated_frame)
-                        # Write processed frame to output video
                         out.write(annotated_frame)
                         # if cv2.waitKey(1) & 0xFF == ord("q"):
                         #     break
@@ -107,14 +70,19 @@ def main():
                     video_bytes = video_file.read()
                 st.video(video_bytes)
     elif choice == "Camera(live detection)":
-        st.header("Webcam Live Feed")
+        st.title("Webcam Live Feed")
         run = st.checkbox('Run')
+        FRAME_WINDOW = st.image([])
+        camera = cv2.VideoCapture(0)
+        model = YOLO(f'models/train-{model_name}/weights/best.pt')
 
-        if run:
-            webrtc_ctx = webrtc_streamer(key="example",
-                                         rtc_configuration=RTC_CONFIGURATION,
-                                         video_processor_factory=BanknoteDetector,
-                                         mode=WebRtcMode.SENDRECV)
+        while run:
+            _, frame = camera.read()
+
+            results = model.predict(frame)
+            annotated_frame = results[0].plot()
+            annotated_frame_rgb = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
+            FRAME_WINDOW.image(annotated_frame_rgb)
 
 
 if __name__ == "__main__":
